@@ -1,6 +1,6 @@
 using Sprache;
 
-namespace ParserCombinatorConsole.Sprache;
+namespace ParserCombinatorConsole.SpracheParser;
 
 public static class QuestionnaireGrammar
 {
@@ -25,10 +25,10 @@ public static class QuestionnaireGrammar
           from rbracket in Parse.Char(']').Token()
           select new Section(id, title, questions);
 
-    public static Parser<Questionnaire> Questionnaire
+    public static readonly Parser<Questionnaire> Questionnaire
         = Section.Many().Select(sections => new Questionnaire(sections)).End();
 
-    public static Parser<AnswerType> AnswerTypeIndicator
+    public static readonly Parser<AnswerType> AnswerTypeIndicator
         = Parse.Char('#').Return(AnswerType.Natural)
         .Or(Parse.Char('$').Return(AnswerType.Number))
         .Or(Parse.Char('%').Return(AnswerType.Date))
