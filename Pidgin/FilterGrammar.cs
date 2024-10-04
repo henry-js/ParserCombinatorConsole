@@ -38,7 +38,8 @@ public static class FilterGrammar
 
 public abstract record Expression;
 public record AttributeExpression(AttributePair Pair) : Expression;
-public record AndExpression(Expression Left, Expression Right) :
+public record AndExpression(Expression Left, Expression Right) : Expression;
+public record OrExpression(Expression Left, Expression Right) : Expression;
 
 public record BuiltInAttributeKey(string Name) : Key
 {
