@@ -1,6 +1,4 @@
 using Sprache;
-using ParserCombinatorConsole.SpracheParser;
-using TUnit.Assertions.Extensions.Throws;
 using ParserCombinatorConsole.PidginParser;
 using Pidgin;
 
@@ -18,9 +16,9 @@ public class PidginParserTests
     public async Task AnAttributePairKeyIsASequenceOfLetters(string key)
     {
 
-        var result = FilterGrammar.AttributePairKey.Parse(key);
+        var result = FilterGrammar.AttributePairKey.ParseOrThrow(key);
 
-        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result).IsNotNull();
     }
 
     [Test]
@@ -29,8 +27,19 @@ public class PidginParserTests
     [Arguments("tw o")]
     public async Task AnAttributePairKeyDoesNotIncludeSpaces(string key)
     {
-        var result = FilterGrammar.AttributePairKey.Parse(key);
-        await Assert.That(result.Value).IsNotEqualTo(key);
+        var result = FilterGrammar.AttributePairKey.ParseOrThrow(key);
+
+        await Assert.That(result.Name).IsNotEqualTo(key);
+    }
+
+    [Test]
+    [Arguments("due", typeof(BuiltInAttributeKey))]
+    [Arguments("custom", typeof(UserDefinedAttributeKey))]
+    public async Task AnAttributePairKeyTypeCanBeParsedFromText(string text, Type keyType)
+    {
+        var result = FilterGrammar.AttributePairKey.ParseOrThrow(text);
+
+        await Assert.That(result).IsAssignableTo(keyType);
     }
 
     [Test]
@@ -39,8 +48,10 @@ public class PidginParserTests
     [Arguments("2022-12-12")]
     public async Task AnAttributePairValueCanBeAlphaNumericContainingDashOrColon(string value)
     {
-        var result = FilterGrammar.AttributePairValue.Parse(value);
-        await Assert.That(result.Success).IsTrue();
+        var result = FilterGrammar.AttributePairValue.ParseOrThrow(value);
+
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result).IsEqualTo(value);
     }
 
     [Test]
@@ -48,10 +59,9 @@ public class PidginParserTests
     [Arguments("'2024-01-01T00:00:00'", "2024-01-01T00:00:00")]
     public async Task AnAttributePairValueShouldSupportSingleQuotedStrings(string value, string expected)
     {
-        var result = FilterGrammar.AttributePairValue.Parse(value);
+        var result = FilterGrammar.AttributePairValue.ParseOrThrow(value);
 
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(result.Value).IsEqualTo(expected);
+        await Assert.That(result).IsEqualTo(expected);
     }
 
     [Test]
@@ -61,32 +71,41 @@ public class PidginParserTests
     [Arguments("project:WORK", "project", "WORK")]
     [Arguments("due:2024-01-02T00:00:00", "due", "2024-01-02T00:00:00")]
     [Arguments("due:'i am a quoted string'", "due", "i am a quoted string")]
+    [Arguments("uda:'i am a UDA'", "uda", "i am a UDA")]
 
     public async Task AnAttributePairCanBeParsedFromText(string text, string key, string value)
     {
-        var result = FilterGrammar.AttributePair.Parse(text);
+        var result = FilterGrammar.AttributePair.ParseOrThrow(text);
 
-        await Assert.That(result.Success).IsTrue();
-
-        await Assert.That(result.Value.Key).IsEqualTo(new BuiltInAttributeKey(key));
+        await Assert.That((result as AttributePair).Key)
+        .IsEqualTo(new BuiltInAttributeKey(key))
+        .Or
+        .IsEqualTo(new UserDefinedAttributeKey(key));
     }
 
-    [Test]
-    [Arguments("due:tomorrow", typeof(BuiltInAttributeKey))]
-    [Arguments("custom:tomorrow", typeof(UserDefinedAttributeKey))]
-    public async Task AnAttributePairKeyTypeCanBeParsedFromText(string text, Type keyType)
-    {
-        var result = FilterGrammar.AttributePair.Parse(text);
 
-        await Assert.That(result.Success).IsTrue();
-        await Assert.That(result.Value.Key).IsAssignableTo(keyType);
+    [Test]
+    [Arguments("due:8w and until:7w", ExpressionOperator.And)]
+    [Arguments("due:9w until:8w", ExpressionOperator.And)]
+    [Arguments("due:10w or until:9w", ExpressionOperator.Or)]
+    [Arguments("project:work or project:notWork", ExpressionOperator.Or)]
+    public async Task ABinaryExpressionCanBeParsedFromText(string text, ExpressionOperator @operator)
+    {
+        var result = FilterGrammar.FilterExpression.ParseOrThrow(text);
+        await Assert.That(result).IsAssignableTo(typeof(BinaryFilterExpression));
+
+        var resultVal = result as BinaryFilterExpression;
+        await Assert.That(resultVal.Operator).IsEqualTo(@operator);
     }
 
     // [Test]
-    // [Arguments("due:tomorrow and until:1w", typeof(AttributePair), typeof(ExpressionOperator), typeof(AttributePair))]
-    // public async Task ASimpleFilterExpressionCanBeParsedFromText(string text, Type attr1, Type op, Type attr2)
+    // [Arguments("due:tomorrow", typeof(AttributePair))]
+    // [Arguments("due:tomorrow or project:home", typeof(BinaryFilterExpression))]
+    // public async Task AParenthesizedExpressionCanBeParsedFromText(string text, Type t)
     // {
+    //     var result = FilterGrammar.FilterExpression.ParseOrThrow(text);
 
+    //     await Assert.That(result).IsAssignableTo(t);
     // }
 }
 
@@ -96,7 +115,7 @@ public class PidginParserTests
 //     public async Task AnIdentifierIsASequenceOfCharacters()
 //     {
 //         var input = "name";
-//         var id = QuestionnaireGrammar.Identifier.Parse(input);
+//         var id = QuestionnaireGrammar.Identifier.ParseOrThrow(input);
 //         await Assert.That(input).IsEqualTo(id);
 //     }
 
@@ -104,7 +123,7 @@ public class PidginParserTests
 //     public async Task AnIdentifierDoesNotIncludeSpaces()
 //     {
 //         var input = "a b";
-//         var parsed = QuestionnaireGrammar.Identifier.Parse(input);
+//         var parsed = QuestionnaireGrammar.Identifier.ParseOrThrow(input);
 
 //         await Assert.That(parsed).IsEqualTo("a");
 //     }
@@ -114,14 +133,14 @@ public class PidginParserTests
 //     {
 //         var input = "\"name";
 
-//         await Assert.That(() => QuestionnaireGrammar.Identifier.Parse(input)).ThrowsException().OfType<Sprache.ParseException>();
+//         await Assert.That(() => QuestionnaireGrammar.Identifier.ParseOrThrow(input)).ThrowsException().OfType<Sprache.ParseException>();
 //     }
 
 //     [Test]
 //     public async Task QuotedTextReturnsAValueBetweenQuotes()
 //     {
 //         var input = "\"this is text\"";
-//         var content = QuestionnaireGrammar.QuotedText.Parse(input);
+//         var content = QuestionnaireGrammar.QuotedText.ParseOrThrow(input);
 
 //         await Assert.That(content).IsEqualTo("this is text");
 //     }
@@ -130,7 +149,7 @@ public class PidginParserTests
 //     public async Task AQuestionIsAnIdentifierFollowedByAPrompt()
 //     {
 //         var input = "name \"Full Name\"";
-//         var question = QuestionnaireGrammar.Question.Parse(input);
+//         var question = QuestionnaireGrammar.Question.ParseOrThrow(input);
 
 //         await Assert.That(question.Id).IsEqualTo("name");
 //         await Assert.That(question.Prompt).IsEqualTo("Full Name");
