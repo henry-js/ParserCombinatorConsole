@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
+using Pidgin;
 using Pidgin.Expression;
 
 using static Pidgin.Parser;
 
-namespace Pidgin.Examples.Expression;
+namespace ParserCombinatorConsole.Pidgin;
 
 public static class ExprParser
 {
@@ -68,8 +69,8 @@ public static class ExprParser
         )
     ).Labelled("expression");
 
-    public static Expr ParseOrThrow(string input)
-        => _expr.ParseOrThrow(input);
+    public static Result<char, Expr> Parse(string input)
+        => _expr.Parse(input);
 }
 
 public abstract record Expr;

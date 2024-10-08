@@ -1,8 +1,6 @@
-using System.Linq.Expressions;
-using System.Net;
-using System.Security.Authentication.ExtendedProtection;
 using Pidgin;
 using Pidgin.Expression;
+using Sprache;
 using static Pidgin.Parser<char>;
 using static Pidgin.Parser;
 
@@ -15,15 +13,15 @@ public static class FilterGrammar
     private static readonly Parser<char, char> _lParen = Try(Char('('));
     private static readonly Parser<char, char> _rParen = Try(SkipWhitespaces.Then(Char(')')));
     private static Parser<char, Func<Expr, Expr, Expr>> Binary(Parser<char, BinaryOperator> op)
-        => op.Select<Func<Expr, Expr, Expr>>(type => (l, r) => new BinaryFilterExpression(l, type, r));
+        => op.Select<Func<Expr, Expr, Expr>>(type => (l, r) => new BinaryFilter(l, type, r));
     private static readonly Parser<char, Func<Expr, Expr, Expr>> _and = Binary(
-        OneOf(
+        Try(OneOf(
             Try(String("and").Between(SkipWhitespaces)),
             WhitespaceString
-        ).ThenReturn(BinaryOperator.And)
+        )).ThenReturn(BinaryOperator.And)
     );
     private static readonly Parser<char, Func<Expr, Expr, Expr>> _or = Binary(
-        String("or").Between(SkipWhitespaces).ThenReturn(BinaryOperator.Or)
+        Try(String("or").Between(SkipWhitespaces)).ThenReturn(BinaryOperator.Or)
     );
 
     private static readonly Parser<char, string> _attributeValue = OneOf(
@@ -46,55 +44,53 @@ public static class FilterGrammar
         .ManyString()
         .Between(Char('\''));
 
-    public static readonly Parser<char, Key> AttributePairKey
+    internal static readonly Parser<char, Key> _attributePairKey
         = OneOf(
             Try(_builtInAttribute),
             _udaAttribute
         );
-    public static readonly Parser<char, string> AttributePairValue = _string.Or(_attributeValue);
-    public static readonly Parser<char, Expr> AttributePair
+    internal static readonly Parser<char, string> _attributePairValue = _string.Or(_attributeValue);
+    internal static readonly Parser<char, Expr> _attributePair
         = Map(
             (key, value) => new AttributePair(key, value),
-            AttributePairKey,
-            _colon.Then(AttributePairValue)
+            _attributePairKey,
+            _colon.Then(_attributePairValue)
         ).TraceResult().Cast<Expr>();
+    private static readonly Parser<char, TagModifier> _tagModifier
+        = OneOf(
+            Char('+').ThenReturn(TagModifier.Include),
+            Char('-').ThenReturn(TagModifier.Exclude)
+        );
+    internal static readonly Parser<char, Expr> _tagExpression
+        = Map(
+            (modifier, value) => new Tag(modifier, value),
+            _tagModifier,
+            LetterOrDigit.AtLeastOnceString()
+        ).Cast<Expr>();
 
-    private static readonly Parser<char, Expr> _expr = ExpressionParser.Build<char, Expr>(
+    private static readonly Parser<char, Expr> _expr = ExpressionParser.Build(
         expr => (
             OneOf(
                 expr.Between(_lParen, _rParen),
-                AttributePair
+                _attributePair,
+                _tagExpression
+
             )
         ), [
+            Operator.InfixL(_or),
             Operator.InfixL(_and),
-            Operator.InfixL(_or)
         ]
     );
 
     public static Result<char, Expr> Parse(string input)
         => _expr.Parse(input);
 
-    public static Expr ParseOrThrow(string input)
+    public static Expr ParseExpression(string input)
         => _expr.ParseOrThrow(input);
-    // public static readonly Parser<char, Expression> FilterExpression =
-    //     Rec(() => OneOf(
-    //         BinaryExpression.Trace("trying to parse binary expr").Trace("in one of expression").Cast<Expression>(),
-    //         AttributePair.Cast<Expression>()
-    //     )).TraceResult();
-
-    // public static readonly Parser<char, Expression> BinaryExpression =
-    //     Map(
-    //         (left, op, right) => new BinaryFilterExpression(left, op, right),
-    //         SkipWhitespaces.Then(FilterExpression).TraceResult(),
-    //         OneOf(_or, _and).Between(SkipWhitespaces).TraceResult(),
-    //         FilterExpression.TraceResult()
-    //     ).TraceResult().Cast<Expression>();
 }
 
-public abstract record Expr;
-public record TagExpression(Tag Tag) : Expr;
-public record BinaryFilterExpression(Expr Left, BinaryOperator Operator, Expr Right) : Expr;
 
+public abstract record Key(string Name);
 public record BuiltInAttributeKey : Key
 {
     public static readonly string[] keys = ["due", "until", "project", "end", "entry", "estimate", "id", "modified", "parent", "priority", "recur", "scheduled", "start", "status", "wait"];
@@ -108,7 +104,8 @@ public record UserDefinedAttributeKey : Key
     {
     }
 }
-public abstract record Key(string Name);
+public abstract record Expr;
+public record BinaryFilter(Expr Left, BinaryOperator Operator, Expr Right) : Expr;
 public record AttributePair(Key Key, string Value) : Expr;
 public record Tag(TagModifier Modifier, string Value) : Expr;
 public enum TagModifier { Include, Exclude }
