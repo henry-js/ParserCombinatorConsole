@@ -85,13 +85,15 @@ public class PidginParserTests
 
 
     [Test]
-    [Arguments("due:8w and until:7w", ExpressionOperator.And)]
-    [Arguments("due:9w until:8w", ExpressionOperator.And)]
-    [Arguments("due:10w or until:9w", ExpressionOperator.Or)]
-    [Arguments("project:work or project:notWork", ExpressionOperator.Or)]
-    public async Task ABinaryExpressionCanBeParsedFromText(string text, ExpressionOperator @operator)
+    [Arguments("due:8w and until:7w", BinaryOperator.And)]
+    [Arguments("due:9w until:8w", BinaryOperator.And)]
+    [Arguments("due:10w or until:9w", BinaryOperator.Or)]
+    [Arguments("project:work or project:notWork", BinaryOperator.Or)]
+    public async Task ABinaryExpressionCanBeParsedFromText(string text, BinaryOperator @operator)
     {
-        var result = FilterGrammar.FilterExpression.ParseOrThrow(text);
+        var result = FilterGrammar.ParseOrThrow(text);
+
+        // await Assert.That(result.Success).IsTrue();
         await Assert.That(result).IsAssignableTo(typeof(BinaryFilterExpression));
 
         var resultVal = result as BinaryFilterExpression;
