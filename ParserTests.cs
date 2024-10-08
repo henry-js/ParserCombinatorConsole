@@ -107,6 +107,14 @@ public class PidginParserTests
 
     //     await Assert.That(result).IsAssignableTo(t);
     // }
+
+    [Test]
+    [Arguments("-3*(()370+9)*37")]
+    public async Task ExprParserShouldParseEquation(string text)
+    {
+        var result = ExprParser.ParseOrThrow(text);
+        await Assert.That(result.Success).IsTrue();
+    }
 }
 
 // public class SpracheParserTests
