@@ -8,26 +8,42 @@ namespace ParserCombinatorConsole.PidginParser;
 
 public static class FilterGrammar
 {
-    private static readonly Parser<char, char> _colon = Token(':');
-    private static readonly Parser<char, char> _dash = Token('-');
-    private static readonly Parser<char, char> _lParen = Try(Char('('));
-    private static readonly Parser<char, char> _rParen = Try(SkipWhitespaces.Then(Char(')')));
+    private static readonly Parser<char, char> _colon
+        = Token(':');
+    private static readonly Parser<char, char> _dash
+        = Token('-');
+    private static readonly Parser<char, char> _lParen
+        = Try(Char('('));
+    private static readonly Parser<char, char> _rParen
+        = Try(SkipWhitespaces.Then(Char(')')));
+    private static readonly Parser<char, string> _string
+        = Token(c => c != '\'')
+            .ManyString()
+            .Between(Char('\''));
     private static Parser<char, Func<Expr, Expr, Expr>> Binary(Parser<char, BinaryOperator> op)
         => op.Select<Func<Expr, Expr, Expr>>(type => (l, r) => new BinaryFilter(l, type, r));
-    private static readonly Parser<char, Func<Expr, Expr, Expr>> _and = Binary(
-        Try(OneOf(
-            Try(String("and").Between(SkipWhitespaces)),
-            WhitespaceString
-        )).ThenReturn(BinaryOperator.And)
-    );
-    private static readonly Parser<char, Func<Expr, Expr, Expr>> _or = Binary(
-        Try(String("or").Between(SkipWhitespaces)).ThenReturn(BinaryOperator.Or)
-    );
-
-    private static readonly Parser<char, string> _attributeValue = OneOf(
-        LetterOrDigit,
-        _dash,
-        _colon).ManyString();
+    private static readonly Parser<char, Func<Expr, Expr, Expr>> _and
+        = Binary(
+            Try(OneOf(
+                Try(String("and").Between(SkipWhitespaces)),
+                WhitespaceString
+            )).ThenReturn(BinaryOperator.And)
+        );
+    private static readonly Parser<char, Func<Expr, Expr, Expr>> _or
+        = Binary(
+            Try(String("or").Between(SkipWhitespaces)).ThenReturn(BinaryOperator.Or)
+        );
+    private static readonly Parser<char, TagOperator> _tagOperator
+        = OneOf(
+            Char('+').ThenReturn(TagOperator.Include),
+            Char('-').ThenReturn(TagOperator.Exclude)
+        );
+    private static readonly Parser<char, string> _attributeValue
+        = OneOf(
+            LetterOrDigit,
+            _dash,
+            _colon
+        ).ManyString();
     private static readonly Parser<char, Key> _builtInAttribute
         = OneOf(
         BuiltInAttributeKey.keys.Select(k => String(k))
@@ -39,11 +55,6 @@ public static class FilterGrammar
             .AtLeastOnceString()
             .Select(s => new UserDefinedAttributeKey(s))
             .Cast<Key>();
-    private static readonly Parser<char, string> _string
-    = Token(c => c != '\'')
-        .ManyString()
-        .Between(Char('\''));
-
     internal static readonly Parser<char, Key> _attributePairKey
         = OneOf(
             Try(_builtInAttribute),
@@ -56,15 +67,11 @@ public static class FilterGrammar
             _attributePairKey,
             _colon.Then(_attributePairValue)
         ).TraceResult().Cast<Expr>();
-    private static readonly Parser<char, TagModifier> _tagModifier
-        = OneOf(
-            Char('+').ThenReturn(TagModifier.Include),
-            Char('-').ThenReturn(TagModifier.Exclude)
-        );
+
     internal static readonly Parser<char, Expr> _tagExpression
         = Map(
             (modifier, value) => new Tag(modifier, value),
-            _tagModifier,
+            _tagOperator,
             LetterOrDigit.AtLeastOnceString()
         ).Cast<Expr>();
 
@@ -89,7 +96,6 @@ public static class FilterGrammar
         => _expr.ParseOrThrow(input);
 }
 
-
 public abstract record Key(string Name);
 public record BuiltInAttributeKey : Key
 {
@@ -107,6 +113,6 @@ public record UserDefinedAttributeKey : Key
 public abstract record Expr;
 public record BinaryFilter(Expr Left, BinaryOperator Operator, Expr Right) : Expr;
 public record AttributePair(Key Key, string Value) : Expr;
-public record Tag(TagModifier Modifier, string Value) : Expr;
-public enum TagModifier { Include, Exclude }
+public record Tag(TagOperator Modifier, string Value) : Expr;
+public enum TagOperator { Include, Exclude }
 public enum BinaryOperator { And, Or }

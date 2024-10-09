@@ -104,9 +104,9 @@ public class PidginParserTests
     }
 
     [Test]
-    [Arguments("+test", TagModifier.Include)]
-    [Arguments("-test", TagModifier.Exclude)]
-    public async Task ATagExpressionCanBeParsedFromText(string tagText, TagModifier modifier)
+    [Arguments("+test", TagOperator.Include)]
+    [Arguments("-test", TagOperator.Exclude)]
+    public async Task ATagExpressionCanBeParsedFromText(string tagText, TagOperator modifier)
     {
         var result = FilterGrammar.ParseExpression(tagText);
 
