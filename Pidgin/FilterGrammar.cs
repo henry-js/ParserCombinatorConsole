@@ -97,19 +97,11 @@ public static class FilterGrammar
 }
 
 public abstract record Key(string Name);
-public record BuiltInAttributeKey : Key
+public record BuiltInAttributeKey(string Name) : Key(Name)
 {
     public static readonly string[] keys = ["due", "until", "project", "end", "entry", "estimate", "id", "modified", "parent", "priority", "recur", "scheduled", "start", "status", "wait"];
-    public BuiltInAttributeKey(string name) : base(name)
-    {
-    }
 }
-public record UserDefinedAttributeKey : Key
-{
-    public UserDefinedAttributeKey(string name) : base(name)
-    {
-    }
-}
+public record UserDefinedAttributeKey(string Name) : Key(Name);
 public abstract record Expr;
 public record BinaryFilter(Expr Left, BinaryOperator Operator, Expr Right) : Expr;
 public record AttributePair(Key Key, string Value) : Expr;
