@@ -78,7 +78,7 @@ public class PidginParserTests
 
     public async Task AnAttributePairCanBeParsedFromText(string text, string key, string value)
     {
-        var result = FilterGrammar.ParseExpression(text);
+        var result = FilterGrammar.ParseFilterExpression(text);
 
         await Assert.That((result as AttributePair)?.Key)
         .IsEquivalentTo(new BuiltInAttributeKey(key))
@@ -94,7 +94,7 @@ public class PidginParserTests
     [Arguments("project:work or project:notWork", BinaryOperator.Or)]
     public async Task ABinaryExpressionCanBeParsedFromText(string text, BinaryOperator @operator)
     {
-        var result = FilterGrammar.ParseExpression(text);
+        var result = FilterGrammar.ParseFilterExpression(text);
 
         // await Assert.That(result.Success).IsTrue();
         await Assert.That(result).IsAssignableTo(typeof(BinaryFilter));
@@ -108,7 +108,7 @@ public class PidginParserTests
     [Arguments("-test", TagOperator.Exclude)]
     public async Task ATagExpressionCanBeParsedFromText(string tagText, TagOperator modifier)
     {
-        var result = FilterGrammar.ParseExpression(tagText);
+        var result = FilterGrammar.ParseFilterExpression(tagText);
 
         await Assert.That(result).IsAssignableTo(typeof(Tag));
         var tag = result as Tag;
@@ -122,7 +122,7 @@ public class PidginParserTests
     [Arguments("due:tomorrow or project:home", typeof(BinaryFilter))]
     public async Task DifferentExpressionsCanBeParsedFromText(string text, Type t)
     {
-        var result = FilterGrammar.ParseExpression(text);
+        var result = FilterGrammar.ParseFilterExpression(text);
 
         await Assert.That(result).IsAssignableTo(t);
     }

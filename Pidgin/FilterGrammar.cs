@@ -2,6 +2,7 @@ using Pidgin;
 using Pidgin.Expression;
 using Sprache;
 using static Pidgin.Parser<char>;
+using static Pidgin.Parser<string>;
 using static Pidgin.Parser;
 
 namespace ParserCombinatorConsole.PidginParser;
@@ -46,7 +47,7 @@ public static class FilterGrammar
         ).ManyString();
     private static readonly Parser<char, Key> _builtInAttribute
         = OneOf(
-        BuiltInAttributeKey.keys.Select(k => String(k))
+        Constants.BuiltInKeys.Select(k => String(k))
         )
         .Select(a => new BuiltInAttributeKey(a))
         .Cast<Key>();
@@ -75,36 +76,36 @@ public static class FilterGrammar
             LetterOrDigit.AtLeastOnceString()
         ).Cast<Expr>();
 
-    private static readonly Parser<char, Expr> _expr = ExpressionParser.Build(
+    private static readonly Parser<char, Expr> _filtExpr = ExpressionParser.Build(
         expr => (
             OneOf(
                 expr.Between(_lParen, _rParen),
                 _attributePair,
                 _tagExpression
-
             )
         ), [
             Operator.InfixL(_or),
             Operator.InfixL(_and),
         ]
-    );
+        );
 
     public static Result<char, Expr> Parse(string input)
-        => _expr.Parse(input);
+        => _filtExpr.Parse(input);
 
-    public static Expr ParseExpression(string input)
-        => _expr.ParseOrThrow(input);
+    public static Expr ParseFilterExpression(string input)
+        => _filtExpr.ParseOrThrow(input);
 }
-
-public abstract record Key(string Name);
-public record BuiltInAttributeKey(string Name) : Key(Name)
+public static class Constants
 {
-    public static readonly string[] keys = ["due", "until", "project", "end", "entry", "estimate", "id", "modified", "parent", "priority", "recur", "scheduled", "start", "status", "wait"];
+    public static readonly string[] BuiltInKeys = ["due", "until", "project", "end", "entry", "estimate", "id", "modified", "parent", "priority", "recur", "scheduled", "start", "status", "wait"];
+
 }
+public abstract record Key(string Name);
+public record BuiltInAttributeKey(string Name) : Key(Name);
 public record UserDefinedAttributeKey(string Name) : Key(Name);
+public record AttributePair(Key Key, string Value) : Expr;
 public abstract record Expr;
 public record BinaryFilter(Expr Left, BinaryOperator Operator, Expr Right) : Expr;
-public record AttributePair(Key Key, string Value) : Expr;
 public record Tag(TagOperator Modifier, string Value) : Expr;
 public enum TagOperator { Include, Exclude }
 public enum BinaryOperator { And, Or }
