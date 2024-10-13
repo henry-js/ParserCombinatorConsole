@@ -94,6 +94,12 @@ public static class FilterGrammar
 
     public static Expr ParseFilterExpression(string input)
         => _filtExpr.ParseOrThrow(input);
+    public static IEnumerable<Expr> ParseCommand(string input)
+        => OneOf(
+            _attributePair,
+            _tagExpression
+        ).SeparatedAtLeastOnce(Token(' '))
+        .ParseOrThrow(input);
 }
 public static class Constants
 {

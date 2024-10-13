@@ -1,8 +1,6 @@
-using Sprache;
+using System.Formats.Asn1;
 using ParserCombinatorConsole.PidginParser;
 using Pidgin;
-using ParserCombinatorConsole.Pidgin;
-using System.Net.Http.Headers;
 using TUnit.Assertions.Extensions.Generic;
 
 namespace ParserCombinatorConsole;
@@ -112,7 +110,7 @@ public class PidginParserTests
 
         await Assert.That(result).IsAssignableTo(typeof(Tag));
         var tag = result as Tag;
-        await Assert.That(tag.Modifier).IsEqualTo(modifier);
+        await Assert.That(tag?.Modifier).IsEqualTo(modifier);
 
     }
 
@@ -125,5 +123,19 @@ public class PidginParserTests
         var result = FilterGrammar.ParseFilterExpression(text);
 
         await Assert.That(result).IsAssignableTo(t);
+    }
+
+    [Test]
+    [Arguments("due:1w", 1)]
+    [Arguments("due:1w until:3d", 2)]
+    [Arguments("due:1w until:3d project:work", 3)]
+    [Arguments("due:1w until:3d project:work +fun", 4)]
+    public async Task CommandExpressionCanBeParsedFromText(string text, int quantity)
+    {
+        var result = FilterGrammar.ParseCommand(text);
+
+        await Assert.That(result).IsNotNull();
+
+        await Assert.That(result).HasCount().EqualTo(quantity);
     }
 }
